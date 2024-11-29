@@ -1,0 +1,183 @@
+library(tidyr)
+library(dplyr)
+library(haven)
+library(fixest)
+library(broom)
+library(stringr)
+library(here)
+library(ggplot2)
+library(did)
+library(boot)
+set.seed(20240103)
+
+# file_path <- "/Users/wanghaoran/wanghaoran/SNAP/self-employment/selfemp_acs_Feb/Hansample/county_policy_july/untitled folder/policy_data"
+
+# data <- read_dta("/Users/wanghaoran/wanghaoran/SNAP/self-employment/selfemp_acs_Feb/Hansample/county_policy_july/untitled folder/policy_data/usa_4555_sample_1017_GCS.dta")
+
+data <- read_dta("/home/wang.15063/unity_CGS_1217.dta")
+
+data$G[is.na(data$G)] <- Inf
+
+# data <- data[data$G != 2011, ]
+
+bootstrap_selfemp_me <- function(data, indices){
+  
+  d <- data[indices, ] # Use the resampled data
+  
+  att_selfemp_me_49 <- att_gt(
+    yname = "self_emp",
+    tname = "year",
+    idname = "cpuma0010",
+    gname = "G",
+    xformla = ~ UR,
+    data = d[d$age<50 & d$age>47 & d$sex==1, ],
+    panel = FALSE,
+    allow_unbalanced_panel = TRUE,
+    control_group = "nevertreated",
+    anticipation = 0,
+    weightsname = NULL,
+    alp = 0.05,
+    bstrap = TRUE,
+    cband = TRUE,
+    biters = 1000,
+    clustervars = NULL,
+    est_method = "reg",
+    base_period = "universal",
+    print_details = FALSE,
+    pl = FALSE,
+    cores = 1
+  )
+  
+  es_selfemp_me_49 <- did::aggte(att_selfemp_me_49, 
+                                 type = "dynamic",
+                                 na.rm = TRUE,
+                                 min_e = -4,
+                                 max_e = 3)
+  
+  att_selfemp_me_51 <- att_gt(
+    yname = "self_emp",
+    tname = "year",
+    idname = "cpuma0010",
+    gname = "G",
+    xformla = ~ UR,
+    data = d[d$age>50 & d$age<53 & d$sex==1, ], 
+    panel = FALSE,
+    allow_unbalanced_panel = TRUE,
+    control_group = "nevertreated",
+    anticipation = 0,
+    weightsname = NULL,
+    alp = 0.05,
+    bstrap = TRUE,
+    cband = TRUE,
+    biters = 1000,
+    clustervars = NULL,
+    est_method = "reg",
+    base_period = "universal",
+    print_details = FALSE,
+    pl = FALSE,
+    cores = 1
+  )
+  
+  es_selfemp_me_51 <- did::aggte(att_selfemp_me_51, 
+                                 type = "dynamic",
+                                 na.rm = TRUE,
+                                 min_e = -4,
+                                 max_e = 3)
+  
+  selfemp_me_pre4 <- es_selfemp_me_49$att.egt[1] - es_selfemp_me_51$att.egt[1]
+  selfemp_me_pre3 <- es_selfemp_me_49$att.egt[2] - es_selfemp_me_51$att.egt[2]
+  selfemp_me_pre2 <- es_selfemp_me_49$att.egt[3] - es_selfemp_me_51$att.egt[3]
+  selfemp_me_pre1 <- es_selfemp_me_49$att.egt[4] - es_selfemp_me_51$att.egt[4]
+  selfemp_me_per0 <- es_selfemp_me_49$att.egt[5] - es_selfemp_me_51$att.egt[5]
+  selfemp_me_post1 <- es_selfemp_me_49$att.egt[6] - es_selfemp_me_51$att.egt[6]
+  selfemp_me_post2 <- es_selfemp_me_49$att.egt[7] - es_selfemp_me_51$att.egt[7]
+  selfemp_me_post3 <- es_selfemp_me_49$att.egt[8] - es_selfemp_me_51$att.egt[8]
+  
+  return(c(selfemp_me_pre4, selfemp_me_pre3, selfemp_me_pre2, selfemp_me_pre1, selfemp_me_per0, selfemp_me_post1, selfemp_me_post2, selfemp_me_post3))
+}
+
+boot_result_semp_me <- boot(data = data, statistic = bootstrap_selfemp_me, R = 101)
+
+print(boot_result_semp_me)
+
+bootstrap_workwage_me <- function(data, indices){
+  
+  d <- data[indices, ] # Use the resampled data
+  
+  att_workwage_me_49 <- att_gt(
+    yname = "work_wage",
+    tname = "year",
+    idname = "cpuma0010",
+    gname = "G",
+    xformla = ~ UR,
+    data = d[d$age<50 & d$age>47 & d$sex==1, ],
+    panel = FALSE,
+    allow_unbalanced_panel = TRUE,
+    control_group = "nevertreated",
+    anticipation = 0,
+    weightsname = NULL,
+    alp = 0.05,
+    bstrap = TRUE,
+    cband = TRUE,
+    biters = 1000,
+    clustervars = NULL,
+    est_method = "reg",
+    base_period = "universal",
+    print_details = FALSE,
+    pl = FALSE,
+    cores = 1
+  )
+  
+  es_workwage_me_49 <- did::aggte(att_workwage_me_49, 
+                                  type = "dynamic",
+                                  na.rm = TRUE,
+                                  min_e = -4,
+                                  max_e = 3)
+  
+  att_workwage_me_51 <- att_gt(
+    yname = "work_wage",
+    tname = "year",
+    idname = "cpuma0010",
+    gname = "G",
+    xformla = ~ UR,
+    data = d[d$age>50 & d$age<53 & d$sex==1, ], 
+    panel = FALSE,
+    allow_unbalanced_panel = TRUE,
+    control_group = "nevertreated",
+    anticipation = 0,
+    weightsname = NULL,
+    alp = 0.05,
+    bstrap = TRUE,
+    cband = TRUE,
+    biters = 1000,
+    clustervars = NULL,
+    est_method = "reg",
+    base_period = "universal",
+    print_details = FALSE,
+    pl = FALSE,
+    cores = 1
+  )
+  
+  es_workwage_me_51 <- did::aggte(att_workwage_me_51, 
+                                  type = "dynamic",
+                                  na.rm = TRUE,
+                                  min_e = -4,
+                                  max_e = 3)
+  
+  workwage_me_pre4 <- es_workwage_me_49$att.egt[1] - es_workwage_me_51$att.egt[1]
+  workwage_me_pre3 <- es_workwage_me_49$att.egt[2] - es_workwage_me_51$att.egt[2]
+  workwage_me_pre2 <- es_workwage_me_49$att.egt[3] - es_workwage_me_51$att.egt[3]
+  workwage_me_pre1 <- es_workwage_me_49$att.egt[4] - es_workwage_me_51$att.egt[4]
+  workwage_me_per0 <- es_workwage_me_49$att.egt[5] - es_workwage_me_51$att.egt[5]
+  workwage_me_post1 <- es_workwage_me_49$att.egt[6] - es_workwage_me_51$att.egt[6]
+  workwage_me_post2 <- es_workwage_me_49$att.egt[7] - es_workwage_me_51$att.egt[7]
+  workwage_me_post3 <- es_workwage_me_49$att.egt[8] - es_workwage_me_51$att.egt[8]
+  
+  return(c(workwage_me_pre4, workwage_me_pre3, workwage_me_pre2, workwage_me_pre1, workwage_me_per0, workwage_me_post1, workwage_me_post2, workwage_me_post3))
+}
+
+boot_result_wemp_me <- boot(data = data, statistic = bootstrap_workwage_me, R = 101)
+
+print(boot_result_semp_me)
+
+print(boot_result_wemp_me)
